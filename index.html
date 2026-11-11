@@ -32,11 +32,11 @@
           <div class="eyebrow"><span class="pulse"></span> CÔNG CỤ HỖ TRỢ TRA CỨU THÔNG TIN THUẾ</div>
           <h1>Tra cứu mã số thuế.<br><em>Chủ động trước khi xuất cảnh.</em></h1>
           <p>Tra cứu thông tin doanh nghiệp, kiểm tra trạng thái mã số thuế và truy cập trực tiếp các danh sách thông báo xuất cảnh do Cục Thuế công bố.</p>
-          <div class="hero-badges"><span>◈ Dữ liệu doanh nghiệp qua Xinvoice</span><span>◉ Nguồn xuất cảnh từ Cục Thuế</span><span>♢ Không lưu CCCD</span></div>
+          <div class="hero-badges"><span>◈ Xinvoice / VietQR dự phòng</span><span>◉ Nguồn xuất cảnh từ Cục Thuế</span><span>♢ Không lưu CCCD</span></div>
         </div>
         <div class="hero-panel" aria-hidden="true">
-          <div class="hero-panel-top"><span>TAXMAP / DATA OVERVIEW</span><span class="indicator">● LIVE-READY</span></div>
-          <div class="hero-flow"><span>01. MÃ SỐ THUẾ</span><b>→</b><span>02. XINVOICE</span><b>→</b><span>03. THÔNG TIN</span></div>
+          <div class="hero-panel-top"><span>TAXMAP / DATA OVERVIEW</span><span class="indicator">● PUBLIC LOOKUP</span></div>
+          <div class="hero-flow"><span>01. MÃ SỐ THUẾ</span><b>→</b><span>02. API</span><b>→</b><span>03. THÔNG TIN</span></div>
           <div class="hero-metric"><strong>02</strong><span>LUỒNG TRA CỨU</span></div>
           <div class="hero-mini"><span class="mini-line"></span><span class="mini-line short"></span><span class="mini-line"></span></div>
           <div class="hero-footer">Xác minh xuất cảnh trên hệ thống chính thức, không suy đoán từ trạng thái MST.</div>
@@ -56,7 +56,7 @@
             <form id="company-form" novalidate>
               <label for="tax-code">Mã số thuế doanh nghiệp / đơn vị <span class="required">*</span></label>
               <div class="input-action"><input id="tax-code" name="taxCode" placeholder="Ví dụ: 0101248141 hoặc 0101248141-001" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="14" required><button class="primary-btn" id="lookup-btn" type="submit">Tra cứu MST <span aria-hidden="true">→</span></button></div>
-              <p class="field-hint">MST gồm 10 chữ số hoặc MST đơn vị phụ thuộc gồm 13 chữ số (có thể dùng dấu gạch nối).</p>
+              <p class="field-hint">MST 10 hoặc 13 chữ số; trạng thái hoạt động chỉ có khi Xinvoice trả dữ liệu. VietQR không có trường trạng thái.</p>
               <div class="form-foot"><button class="link-button" type="button" id="demo-btn">Xem dữ liệu mẫu ↗</button><span id="api-mode" class="mode-pill">Tra cứu trực tiếp</span></div>
             </form>
             <div id="company-message" class="message hidden" role="status" aria-live="polite"></div>
@@ -94,10 +94,10 @@
         </div>
         <aside class="side-card">
           <div class="side-title"><span class="side-orb">i</span><h3>Cần biết trước khi tra cứu</h3></div>
-          <div class="fact"><span class="fact-no">01</span><div><strong>MST khác CCCD</strong><p>Xinvoice tra cứu người nộp thuế bằng MST; không xác định quan hệ giữa CCCD và doanh nghiệp.</p></div></div>
+          <div class="fact"><span class="fact-no">01</span><div><strong>MST khác CCCD</strong><p>API tra cứu theo MST, không xác định quan hệ giữa CCCD và doanh nghiệp.</p></div></div>
           <div class="fact"><span class="fact-no">02</span><div><strong>Trạng thái MST ≠ xuất cảnh</strong><p>Một doanh nghiệp đang hoạt động không đồng nghĩa người đại diện được phép xuất cảnh.</p></div></div>
           <div class="fact"><span class="fact-no">03</span><div><strong>Thông báo cần xác minh</strong><p>Cổng Cục Thuế yêu cầu mã xác nhận. TaxMap không vượt CAPTCHA và không tự truy cập dữ liệu cá nhân.</p></div></div>
-          <div class="side-info"><strong>Quyền riêng tư</strong><p>Trình duyệt không lưu CCCD vào bộ nhớ lâu dài. Không gửi CCCD tới Xinvoice. Chỉ gửi MST khi bạn chủ động tra cứu thông tin doanh nghiệp.</p></div>
+          <div class="side-info"><strong>Quyền riêng tư</strong><p>TaxMap không lưu CCCD trên máy chủ. Khi tra cứu MST, trình duyệt gửi MST tới Xinvoice và có thể gửi tới VietQR nếu Xinvoice không kết nối được. CCCD không được gửi tới các API doanh nghiệp.</p></div>
         </aside>
       </div>
     </section>
