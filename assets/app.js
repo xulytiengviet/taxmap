@@ -4,6 +4,7 @@
   const panels = {company: $('panel-company'), exit: $('panel-exit')};
   const tabs = {company: $('tab-company'), exit: $('tab-exit')};
   const lookupClient = window.TAXMAP_LOOKUP;
+  const mapClient = window.TAXMAP_MAP;
   const sourceLinks = {
     issued: 'https://gdt.gov.vn/wps/portal/Home/nt/xc',
     planned: 'https://gdt.gov.vn/wps/portal/Home/nt/se'
@@ -17,6 +18,7 @@
     tabs.exit.classList.toggle('active', !isCompany);
     tabs.company.setAttribute('aria-selected', String(isCompany));
     tabs.exit.setAttribute('aria-selected', String(!isCompany));
+    $('map-card').classList.toggle('hidden', !isCompany);
   }
   tabs.company.addEventListener('click', () => setTab('company'));
   tabs.exit.addEventListener('click', () => setTab('exit'));
@@ -65,41 +67,113 @@
     if (!obj || typeof obj !== 'object' || Array.isArray(obj) || !('taxID' in obj || 'name' in obj)) throw new Error('Cấu trúc phản hồi chưa đúng định dạng Xinvoice.');
     return obj;
   }
+  function clearMap() {
+    $('map-frame').removeAttribute('src');
+    $('map-frame').classList.add('hidden');
+    $('map-empty').classList.remove('hidden');
+    $('map-open').removeAttribute('href');
+    $('map-open').classList.add('hidden');
+    $('map-address').textContent = 'Địa chỉ doanh nghiệp sẽ xuất hiện ở đây.';
+  }
+  function updateMap(address) {
+    const links = mapClient && mapClient.linksForAddress(address);
+    if (!links) {
+      clearMap();
+      $('map-empty').querySelector('p').textContent =
+        'API chưa cung cấp địa chỉ. Vui lòng đối chiếu địa chỉ tại cổng Cục Thuế.';
+      return;
+    }
+    $('map-address').textContent = address;
+    $('map-empty').classList.add('hidden');
+    $('map-frame').src = links.embed;
+    $('map-frame').classList.remove('hidden');
+    $('map-open').href = links.search;
+    $('map-open').classList.remove('hidden');
+  }
   function renderTaxData(payload, sample) {
     const data = unwrap(payload);
+    const ref = payload && payload.reference;
+    const referenceOnly = Boolean(payload && payload.isLive === false);
+    const source = (payload && payload.source) || 'Xinvoice';
     $('result-name').textContent = str(data.name);
     $('result-tax-id').textContent = str(data.taxID);
-    $('result-type').textContent = str(data.orgType);
+    $('result-tax-address').textContent = str(data.taxAddress);
     $('result-address').textContent = str(data.address);
+    $('result-international').textContent = str(data.internationalName);
+    $('result-short').textContent = str(data.shortName);
+    $('result-representative').textContent = str(data.legalRepresentative);
     $('result-department').textContent = str(data.taxDepartment);
+    $('result-type').textContent = str(data.orgType);
     $('result-updated').textContent = formatDate(data.updatedAt);
-    const label = str(data.status);
+    $('result-industry-name').textContent = str(data.mainIndustry);
+    $('result-industry-code').textContent = data.mainIndustryCode
+      ? '(Mã ' + String(data.mainIndustryCode) + ')' : '';
+    $('result-industry-description').textContent = data.mainIndustryDescription
+      ? String(data.mainIndustryDescription) : '';
+    const status = data.status ? String(data.status)
+      : data.snapshotStatus && ref
+        ? String(data.snapshotStatus) + ' (hồ sơ ngày ' + ref.asOf + ')'
+        : 'Chưa có dữ liệu về tình trạng';
+    $('result-status-value').textContent = status;
     const tag = $('result-tag');
-    tag.textContent = label;
-    tag.className = 'status-tag ' + (data.status ? classifyStatus(data.status) : 'pending');
-    const source = (payload && payload.source) || 'Xinvoice';
-    $('result-source').textContent = sample
-      ? 'DỮ LIỆU MẪU từ tài liệu Xinvoice — KHÔNG PHẢI kết quả tra cứu thời gian thực. Không dùng để kết luận tình trạng doanh nghiệp hoặc xuất cảnh.'
-      : 'Nguồn: ' + source + ' · Thời điểm truy vấn: ' + new Date().toLocaleString('vi-VN') + '. Trạng thái MST không phản ánh tình trạng tạm hoãn xuất cảnh. ' + (source === 'VietQR' ? 'VietQR không cung cấp trạng thái hoạt động; các ô không có dữ liệu phải được xác minh tại Cục Thuế.' : '');
+    tag.textContent = data.status && !referenceOnly
+      ? String(data.status) : 'Chưa xác minh hiện tại';
+    tag.className = 'status-tag ' +
+      (data.status && !referenceOnly ? classifyStatus(data.status) : 'pending');
+    const referenceNote = $('result-reference-note');
+    if (ref) {
+      referenceNote.textContent =
+        'Thông tin tham khảo bổ sung: ' + ref.name + '. ' +
+        (ref.enrichedFields && ref.enrichedFields.length
+          ? 'Có ' + ref.enrichedFields.length + ' trường thiếu trong API được bổ sung theo hồ sơ này. '
+          : '') +
+        'Các trường tham khảo có thể đã thay đổi; hãy kiểm tra lại trên nguồn chính thức.';
+      referenceNote.classList.remove('hidden');
+      const referenceLink = $('result-detail-source');
+      if (ref.url && /^https:\/\//.test(ref.url)) {
+        referenceLink.href = ref.url;
+        referenceLink.classList.remove('hidden');
+      } else {
+        referenceLink.classList.add('hidden');
+      }
+    } else {
+      referenceNote.classList.add('hidden');
+      $('result-detail-source').classList.add('hidden');
+      $('result-detail-source').removeAttribute('href');
+    }
+    const actualSourceText = sample || referenceOnly
+      ? 'HỒ SƠ THAM KHẢO (KHÔNG PHẢI DỮ LIỆU THỜI GIAN THỰC)'
+      : 'Nguồn API: ' + source + ' · Truy vấn: ' +
+        new Date().toLocaleString('vi-VN') + '.';
+    $('result-source').textContent = actualSourceText +
+      ' Trạng thái doanh nghiệp không xác nhận tình trạng tạm hoãn xuất cảnh.' +
+      (source === 'VietQR'
+        ? ' VietQR không cung cấp trạng thái MST; nếu hiện trạng thái có ngày thì đó là dữ liệu tham khảo.' : '');
+    updateMap(data.address || data.taxAddress || '');
     $('company-result').classList.remove('hidden');
   }
-  const sample = {
-    orgType:'Doanh nghiệp / Đơn vị sự nghiệp công lập',
-    taxID:'0101248141',
-    name:'CÔNG TY CỔ PHẦN FPT',
-    address:'Số 10 phố Phạm Văn Bạch, Phường Cầu Giấy, TP Hà Nội',
-    taxDepartment:'Chi cục Thuế Doanh nghiệp lớn',
-    status:'NNT đang hoạt động',
-    updatedAt:'2025-12-19T08:35:45.000Z'
-  };
+  const sample = window.TAXMAP_CURATED && window.TAXMAP_CURATED['0319776703'];
   $('demo-btn').addEventListener('click', () => {
     hideMessage('company-message');
-    renderTaxData(sample, true);
+    if (!sample) {
+      showMessage('company-message', 'Chưa tải được hồ sơ mẫu.', 'error');
+      return;
+    }
+    renderTaxData({
+      source: 'Hồ sơ tham khảo',
+      data: {...sample.data, status: null},
+      isLive: false,
+      reference: {
+        asOf:sample.asOf, name:sample.sourceName,
+        url:sample.sourceUrl, enrichedFields:[]
+      }
+    }, true);
   });
   $('company-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     hideMessage('company-message');
     $('company-result').classList.add('hidden');
+    clearMap();
     const code = normalizeTaxCode($('tax-code').value);
     if (!code) {
       showMessage('company-message', 'MST không hợp lệ. Hãy nhập 10 số hoặc 10 số + 3 số chi nhánh. CCCD 12 số không phải đầu vào của chức năng doanh nghiệp.', 'error');
