@@ -1,13 +1,16 @@
 # TaxMap Việt Nam
 
-Trang tra cứu thông tin mã số thuế và **hướng dẫn kiểm tra thông báo tạm hoãn xuất cảnh** qua cổng chính thức của Cục Thuế.
+Website hỗ trợ **tra cứu doanh nghiệp theo MST** và **tra cứu thông báo liên quan đến tạm hoãn xuất cảnh** trên cổng Cục Thuế.
 
-- **Website tĩnh:** `index.html`, `assets/style.css`, `assets/app.js`
-- **Nguồn doanh nghiệp:** Xinvoice `GET https://api.xinvoice.vn/gdt-api/tax-payer/:taxCode`
-- **Backend an toàn:** Cloudflare Worker trong `worker/`
-- **Thông báo xuất cảnh:** liên kết sang [đã có thông báo](https://gdt.gov.vn/wps/portal/Home/nt/xc) và [sẽ tạm hoãn](https://gdt.gov.vn/wps/portal/Home/nt/se) để người dùng tự nhập mã xác nhận tại Cục Thuế.
+- Giao diện: [index.html](index.html) + CSS + JavaScript thuần; có thể chạy trên **GitHub Pages**, không cần máy chủ riêng.
+- **Mặc định:** thử `GET https://api.xinvoice.vn/gdt-api/tax-payer/{taxCode}` trực tiếp từ trình duyệt, **không gửi header khóa API**.
+- Nếu Xinvoice không trả về dữ liệu, tự động thử `GET https://api.vietqr.io/v2/business/{taxCode}` (API công khai không cần khóa).
+- Nguồn VietQR chỉ cho biết **nhận dạng doanh nghiệp** (MST, tên, địa chỉ), **không có trạng thái hoạt động / thông báo xuất cảnh**.
+- Tab CCCD/CMND/MST dẫn sang trang [thông báo tạm hoãn](https://gdt.gov.vn/wps/portal/Home/nt/xc) và [thông báo sẽ tạm hoãn](https://gdt.gov.vn/wps/portal/Home/nt/se), tự nhập CAPTCHA tại Cục Thuế.
 
-> **Giới hạn quan trọng:** Xinvoice **không** cung cấp thông tin tạm hoãn xuất cảnh. TaxMap chưa có API chính thức để tự động trả về thông báo từ CCCD hoặc MST. Chức năng thông báo chỉ là hỗ trợ mở đúng biểu mẫu và sao chép mã người dùng nhập. Không có dữ liệu xuất cảnh = **chưa xác minh**, không phải “được phép xuất cảnh”. Trạng thái MST không phải trạng thái xuất cảnh.
+> **Quan trọng (11/11/2026):** Xinvoice công khai *đường dẫn* API nhưng [tài liệu chính thức](https://xinvoice.vn/docs/api-tich-hop/api-tra-mst/) vẫn yêu cầu header `client-id` và `api-key`. Do vậy **không có bảo đảm** Xinvoice sẽ trả lời một yêu cầu không kèm khóa hoặc cho phép CORS từ website GitHub Pages. TaxMap sẽ thử trực tiếp rồi fallback, không hiển thị dữ liệu mẫu như dữ liệu thật.
+
+> **VietQR có kế hoạch ngừng hỗ trợ endpoint tra cứu MST từ 01/03/2027**; xem [thông báo của nhà cung cấp](https://www.vietqr.io/tra-cuu-mst). Đây là giải pháp dự phòng tạm thời, không nên coi là nguồn dữ liệu dài hạn.
 
 ## Cấu trúc
 
@@ -16,103 +19,62 @@ taxmap/
 ├── index.html
 ├── assets/
 │   ├── style.css
-│   ├── app.js
-│   └── config.js         # URL public của Worker, KHÔNG có secret
-├── worker/
-│   ├── src/index.js      # proxy bảo vệ khóa Xinvoice
-│   ├── test/index.test.mjs
+│   ├── app.js                 # giao diện, tabs, kết quả
+│   └── lookup.js              # Xinvoice trực tiếp → VietQR dự phòng
+├── worker/                    # mã nguồn proxy Xinvoice tùy chọn cho giai đoạn API có khóa
+│   ├── src/index.js
+│   ├── test/*.test.mjs        # tests tích hợp giả lập, không gửi MST thật
 │   ├── package.json
 │   └── wrangler.toml
-├── .github/workflows/ci.yml
+├── .github/workflows/
+│   ├── ci.yml
+│   └── pages.yml
 └── README.md
 ```
 
-## 1. Chạy giao diện
+## Chạy ngay (không cấu hình API key, không cần Cloudflare)
 
-Mở `index.html` với local HTTP server, ví dụ:
+1. GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions**. Repository cần được bật Pages một lần.
+2. Mở **Actions → Deploy TaxMap Pages → Run workflow**.
+3. Sau khi workflow thành công, mở `https://xulytiengviet.github.io/taxmap/`.
+4. Nhập MST 10 hoặc 13 số và bấm **Tra cứu MST**. Trang sẽ thử Xinvoice trước, sau đó VietQR khi cần. Dòng thông báo sẽ giải thích lỗi CORS/401/403/429 nếu có.
+5. Nếu cần đối chiếu thông báo xuất cảnh, mở tab **Thông báo xuất cảnh**, nhập CCCD/CMND/MST và tiếp tục tại Cục Thuế.
+
+Để thử ở máy cá nhân:
 
 ```sh
 python -m http.server 8080
 ```
 
-Mở `http://localhost:8080`. Chọn **Xem dữ liệu mẫu** để kiểm tra giao diện. Đó là dữ liệu ví dụ từ tài liệu Xinvoice, **không phải kết quả thực tế**.
+Mở `http://localhost:8080`. Nút **Xem dữ liệu mẫu** chỉ dùng để kiểm tra giao diện; nhãn mẫu được hiển thị rõ ràng.
 
-Để xuất bản: GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions** (bật thủ công một lần). Sau đó mở **Actions → Deploy TaxMap Pages → Run workflow**, hoặc đẩy commit mới vào `main`. Workflow `.github/workflows/pages.yml` sẽ tự xuất bản. Đường dẫn dự kiến sau khi triển khai thành công là `https://xulytiengviet.github.io/taxmap/`. Repository mới chưa bật Pages sẽ khiến workflow lỗi ở bước `Configure Pages` cho đến khi cấu hình này hoàn tất.
+## Quy tắc biểu diễn dữ liệu
 
-## 2. Đăng ký API Xinvoice
+- **Xinvoice trả dữ liệu hợp lệ:** các trường `taxID`, `name`, `address`, `orgType`, `taxDepartment`, `status`, `updatedAt` được hiển thị tùy theo nội dung phản hồi.
+- **VietQR trả dữ liệu hợp lệ:** `data.id` → MST; `data.name` → tên; `data.address` → địa chỉ; trạng thái, loại hình, cơ quan thuế, thời điểm cập nhật = **Chưa có dữ liệu**, không tự suy luận.
+- **Hai nguồn không truy cập được:** báo lỗi và hướng dẫn đối chiếu cổng thuế, không hiển thị kết quả giả.
+- **Thông báo xuất cảnh:** chưa có API tra cứu công khai chính thức cho TaxMap. Không có kết quả API doanh nghiệp ≠ được phép xuất cảnh.
+- Không tự động vượt CAPTCHA, không thu thập hoặc công khai dữ liệu cá nhân hàng loạt.
+- CCCD không gửi tới Xinvoice/VietQR. Khi nhập MST, MST được gửi tới các nhà cung cấp dữ liệu bằng HTTPS; không lưu CCCD/MST vào localStorage/cookie.
 
-Xem [tài liệu tích hợp](https://xinvoice.vn/docs/api-tich-hop/api-tra-mst/). Nhà cung cấp yêu cầu `client-id` và `api-key`.
-
-**Không bao giờ** ghi các khóa này vào repository, `assets/config.js`, JavaScript ở trình duyệt, GitHub Actions logs, hay URL query string.
-
-## 3. Triển khai backend trên Cloudflare Workers
-
-Yêu cầu: Node.js (khuyến nghị 22+), tài khoản Cloudflare, Wrangler CLI, cặp khóa Xinvoice hợp lệ.
-
-```sh
-cd worker
-npm install
-npx wrangler login
-npx wrangler secret put XINVOICE_CLIENT_ID
-npx wrangler secret put XINVOICE_API_KEY
-npx wrangler deploy
-```
-
-Wrangler dùng `worker/wrangler.toml`, đã giới hạn Origin về `https://xulytiengviet.github.io` và có rate-limit xấp xỉ 10 request/phút/IP/điểm Cloudflare. Đây **không** phải giới hạn toàn cầu tuyệt đối, Origin/CORS **không phải xác thực chống bot**. Đối với website đông người dùng, bổ sung Turnstile, Cloudflare WAF, giới hạn quota và theo dõi mức sử dụng khóa Xinvoice trước khi mở rộng.
-
-Worker cung cấp:
-
-- `GET /health` — thông tin dịch vụ, không kiểm tra trạng thái xuất cảnh.
-- `POST /api/lookup` — JSON `{"taxCode":"0101248141"}`, chỉ chấp nhận MST 10 hoặc 13 số, trả về các trường đã chọn lọc của Xinvoice.
-- Không có endpoint `/exit-check` bởi chưa có API nhà nước được cấp quyền.
-
-Nếu mở trang bằng `localhost` khi phát triển thì cần đổi `ALLOWED_ORIGIN` sang origin tương ứng, triển khai worker, sau đó **đổi lại** origin GitHub Pages cho production.
-
-## 4. Nối website với backend
-
-Trong `assets/config.js`, điền hostname Worker của chính bạn:
-
-```js
-window.TAXMAP_CONFIG = Object.freeze({
-  apiBase: 'https://taxmap-api.TAI_KHOAN.workers.dev'
-});
-```
-
-Chỉ URL public; **không đưa API key vào file**. Khi chưa cấu hình, giao diện không giả vờ đã tra cứu thành công và sẽ báo cần thiết lập backend.
-
-## 5. Tra cứu thông báo xuất cảnh
-
-Chọn tab **Thông báo xuất cảnh**, nhập số định danh / CMND / MST, chọn **Chuẩn bị tra cứu**. Sau đó sao chép số vào biểu mẫu tại một trong hai cổng:
-
-- [Cục Thuế — thông báo về xuất cảnh](https://gdt.gov.vn/wps/portal/Home/nt/xc): tạm hoãn, gia hạn, hủy bỏ.
-- [Cục Thuế — thông báo sẽ tạm hoãn](https://gdt.gov.vn/wps/portal/Home/nt/se): thông báo trước khi áp dụng.
-
-Điền mã xác nhận do **Cục Thuế** hiển thị; không có tự động hóa CAPTCHA, không scraping không được phép. Số được xử lý trong phiên trình duyệt, không lưu vào localStorage/cookie, không gửi vào API Xinvoice.
-
-Người vừa đổi CCCD nên tự kiểm tra cả CMND cũ nếu cần; dữ liệu liên thông lịch sử hiện chưa tích hợp.
-
-## 6. Kiểm thử
+## Kiểm thử
 
 ```sh
+node --check assets/app.js
+node --check assets/lookup.js
 cd worker
 npm test
 ```
 
-Và:
+Kiểm thử frontend bằng mock bao gồm: Xinvoice trả dữ liệu; Xinvoice báo 403; trình duyệt chặn CORS; VietQR thành công nhưng **không có trạng thái**; cả hai nguồn bị lỗi. Không có test nào gửi request đến API ngoài.
 
-```sh
-node --check assets/app.js
-node --check worker/src/index.js
-```
+## Khi cần tra cứu trạng thái Xinvoice ổn định
 
-Tests sử dụng mock, không thực hiện truy vấn trả phí hay tra cứu dữ liệu cá nhân thật.
+Nếu Xinvoice thực thi xác thực theo tài liệu, tích hợp công khai không khóa không thể tự bảo đảm. Thư mục `worker/` được giữ **chỉ như một giải pháp tùy chọn trong tương lai** cho tổ chức đã được Xinvoice cấp API key. Frontend mặc định hiện không dùng Worker; không cần triển khai hay cấu hình Cloudflare để chạy chế độ công khai.
 
-## Ranh giới sử dụng và quyền riêng tư
+## Tài liệu
 
-- Không công bố dữ liệu cá nhân tra cứu hàng loạt, không lưu CCCD lên server hoặc GitHub.
-- Mã số thuế doanh nghiệp được gửi tới backend qua HTTPS sau khi người dùng chủ động tra cứu; Worker gọi Xinvoice bằng khóa server-side.
-- Dữ liệu doanh nghiệp có thời điểm cập nhật riêng, không nhất thiết thời gian thực.
-- TaxMap là dự án hỗ trợ tra cứu, **không phải cổng nhà nước**, không cấp giấy xác nhận đủ điều kiện xuất cảnh.
-- Khi cần kết luận chính thức, đối chiếu trực tiếp thông báo với Cục Thuế và cơ quan quản lý xuất nhập cảnh.
-
-**Nguồn tham khảo:** [Xinvoice API](https://xinvoice.vn/apis/tra-cuu-ma-so-thue/) · [Cổng Cục Thuế](https://gdt.gov.vn/) · [Tra cứu MST](https://tracuunnt.gdt.gov.vn/tcnnt/mstdn.jsp).
+- [Xinvoice: API MST chính thức](https://xinvoice.vn/docs/api-tich-hop/api-tra-mst/)
+- [VietQR: API tra cứu MST công khai](https://www.vietqr.io/tra-cuu-mst)
+- [Cục Thuế: tra cứu đăng ký MST](https://tracuunnt.gdt.gov.vn/tcnnt/mstdn.jsp)
+- [Cục Thuế: thông báo về xuất cảnh](https://gdt.gov.vn/wps/portal/Home/nt/xc)
