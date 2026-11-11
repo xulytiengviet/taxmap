@@ -62,14 +62,22 @@
             <div id="company-message" class="message hidden" role="status" aria-live="polite"></div>
             <div id="company-result" class="result hidden" aria-live="polite">
               <div class="result-head"><div><span class="overline">HỒ SƠ NGƯỜI NỘP THUẾ</span><h4 id="result-name"></h4></div><span id="result-tag" class="status-tag"></span></div>
-              <div class="result-grid">
-                <div><span>Mã số thuế</span><strong id="result-tax-id"></strong></div>
-                <div><span>Loại hình</span><strong id="result-type"></strong></div>
-                <div class="wide"><span>Địa chỉ đăng ký</span><strong id="result-address"></strong></div>
-                <div><span>Cơ quan thuế quản lý</span><strong id="result-department"></strong></div>
-                <div><span>Cập nhật dữ liệu</span><strong id="result-updated"></strong></div>
-              </div>
+              <dl class="profile-table">
+                <div class="profile-row"><dt>Mã số thuế</dt><dd><strong id="result-tax-id"></strong></dd></div>
+                <div class="profile-row"><dt>Địa chỉ Thuế</dt><dd id="result-tax-address"></dd></div>
+                <div class="profile-row"><dt>Địa chỉ đăng ký</dt><dd id="result-address"></dd></div>
+                <div class="profile-row"><dt>Tình trạng MST</dt><dd id="result-status-value"></dd></div>
+                <div class="profile-row"><dt>Tên quốc tế</dt><dd id="result-international"></dd></div>
+                <div class="profile-row"><dt>Tên viết tắt</dt><dd id="result-short"></dd></div>
+                <div class="profile-row"><dt>Người đại diện</dt><dd id="result-representative"></dd></div>
+                <div class="profile-row"><dt>Quản lý bởi</dt><dd id="result-department"></dd></div>
+                <div class="profile-row"><dt>Loại hình</dt><dd id="result-type"></dd></div>
+                <div class="profile-row"><dt>Ngành nghề chính</dt><dd><strong id="result-industry-name"></strong> <span id="result-industry-code" class="industry-code"></span><p id="result-industry-description" class="industry-description"></p></dd></div>
+                <div class="profile-row"><dt>Cập nhật dữ liệu API</dt><dd id="result-updated"></dd></div>
+              </dl>
+              <p id="result-reference-note" class="reference-note hidden"></p>
               <p class="disclaimer" id="result-source"></p>
+              <a id="result-detail-source" class="reference-link hidden" target="_blank" rel="noopener noreferrer">Đối chiếu hồ sơ tham khảo ↗</a>
               <div class="next-card"><div><strong>Tiếp tục kiểm tra thông báo xuất cảnh?</strong><p>Trạng thái MST không xác nhận tình trạng tạm hoãn xuất cảnh của cá nhân.</p></div><button id="go-exit" type="button" class="outline-btn">Kiểm tra thông báo →</button></div>
             </div>
           </section>
@@ -92,13 +100,23 @@
             </div>
           </section>
         </div>
-        <aside class="side-card">
+        <div class="lookup-rail">
+          <aside class="map-card" id="map-card" aria-label="Bản đồ vị trí doanh nghiệp">
+            <div class="map-card-header"><div class="map-spot">⌖</div><div><span class="section-kicker">GOOGLE MAPS</span><h3>Vị trí doanh nghiệp</h3></div></div>
+            <div id="map-empty" class="map-empty"><span aria-hidden="true">⌖</span><strong>Chưa có địa chỉ để hiển thị</strong><p>Nhập MST và tra cứu để xem vị trí theo địa chỉ đăng ký doanh nghiệp.</p></div>
+            <iframe id="map-frame" class="map-frame hidden" title="Google Maps vị trí đăng ký doanh nghiệp" loading="lazy" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+            <div class="map-card-body"><p id="map-address">Địa chỉ doanh nghiệp sẽ xuất hiện ở đây.</p>
+            <a id="map-open" class="map-open-link hidden" target="_blank" rel="noopener noreferrer">Mở trên Google Maps ↗</a>
+            <p class="map-disclaimer">Vị trí được Google Maps tìm theo chuỗi địa chỉ, không phải tọa độ địa chính được xác minh. Khi tải bản đồ, Google có thể nhận thông tin địa chỉ tìm kiếm.</p></div>
+          </aside>
+          <aside class="side-card">
           <div class="side-title"><span class="side-orb">i</span><h3>Cần biết trước khi tra cứu</h3></div>
           <div class="fact"><span class="fact-no">01</span><div><strong>MST khác CCCD</strong><p>API tra cứu theo MST, không xác định quan hệ giữa CCCD và doanh nghiệp.</p></div></div>
           <div class="fact"><span class="fact-no">02</span><div><strong>Trạng thái MST ≠ xuất cảnh</strong><p>Một doanh nghiệp đang hoạt động không đồng nghĩa người đại diện được phép xuất cảnh.</p></div></div>
           <div class="fact"><span class="fact-no">03</span><div><strong>Thông báo cần xác minh</strong><p>Cổng Cục Thuế yêu cầu mã xác nhận. TaxMap không vượt CAPTCHA và không tự truy cập dữ liệu cá nhân.</p></div></div>
           <div class="side-info"><strong>Quyền riêng tư</strong><p>TaxMap không lưu CCCD trên máy chủ. Khi tra cứu MST, trình duyệt gửi MST tới Xinvoice và có thể gửi tới VietQR nếu Xinvoice không kết nối được. CCCD không được gửi tới các API doanh nghiệp.</p></div>
-        </aside>
+          </aside>
+        </div>
       </div>
     </section>
     <section id="nguon-chinh-thuc" class="container sources">
@@ -116,6 +134,7 @@
     </section>
   </main>
   <footer class="footer"><div class="container footer-inner"><div><strong>taxmap<span>+</span></strong><p>Công cụ cộng đồng · Không phải cổng thông tin nhà nước</p></div><div><a href="https://github.com/xulytiengviet/taxmap" target="_blank" rel="noopener noreferrer">Mã nguồn mở</a><span>© 2026 TaxMap Vietnam</span></div></div></footer>
+  <script src="./assets/curated.js"></script>
   <script src="./assets/lookup.js"></script>
   <script src="./assets/app.js"></script>
 </body>
