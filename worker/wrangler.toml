@@ -1,0 +1,16 @@
+name = "taxmap-api"
+main = "src/index.js"
+compatibility_date = "2026-11-01"
+workers_dev = true
+
+[vars]
+# Change if your GitHub Pages origin uses a custom domain.
+ALLOWED_ORIGIN = "https://xulytiengviet.github.io"
+
+# Approximate rate limit, applied per Cloudflare location.
+[[ratelimits]]
+name = "TAXMAP_LIMITER"
+namespace_id = "1001"
+[ratelimits.simple]
+limit = 10
+period = 60
