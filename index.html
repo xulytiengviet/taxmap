@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="description" content="TaxMap Việt Nam: tra cứu thông tin doanh nghiệp theo mã số thuế qua Xinvoice và hỗ trợ kiểm tra thông báo xuất cảnh trên cổng Cục Thuế.">
+  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <title>TaxMap Việt Nam | Tra cứu MST & thông báo xuất cảnh</title>
+  <link rel="stylesheet" href="./assets/style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Chuyển đến nội dung</a>
+  <header class="topbar">
+    <div class="container top-inner">
+      <a class="brand" href="./" aria-label="TaxMap - Trang chủ">
+        <span class="brand-icon" aria-hidden="true">T<span>+</span></span>
+        <span><strong>taxmap</strong><small>VIỆT NAM</small></span>
+      </a>
+      <nav class="topnav" aria-label="Điều hướng chính">
+        <a href="#tra-cuu">Tra cứu</a>
+        <a href="#nguon-chinh-thuc">Nguồn dữ liệu</a>
+        <a href="#huong-dan">Hướng dẫn</a>
+      </nav>
+      <a class="repo-link" href="https://github.com/xulytiengviet/taxmap" target="_blank" rel="noopener noreferrer">GitHub ↗</a>
+    </div>
+  </header>
+  <main id="main">
+    <section class="hero">
+      <div class="container hero-inner">
+        <div class="hero-copy">
+          <div class="eyebrow"><span class="pulse"></span> CÔNG CỤ HỖ TRỢ TRA CỨU THÔNG TIN THUẾ</div>
+          <h1>Tra cứu mã số thuế.<br><em>Chủ động trước khi xuất cảnh.</em></h1>
+          <p>Tra cứu thông tin doanh nghiệp, kiểm tra trạng thái mã số thuế và truy cập trực tiếp các danh sách thông báo xuất cảnh do Cục Thuế công bố.</p>
+          <div class="hero-badges"><span>◈ Dữ liệu doanh nghiệp qua Xinvoice</span><span>◉ Nguồn xuất cảnh từ Cục Thuế</span><span>♢ Không lưu CCCD</span></div>
+        </div>
+        <div class="hero-panel" aria-hidden="true">
+          <div class="hero-panel-top"><span>TAXMAP / DATA OVERVIEW</span><span class="indicator">● LIVE-READY</span></div>
+          <div class="hero-flow"><span>01. MÃ SỐ THUẾ</span><b>→</b><span>02. XINVOICE</span><b>→</b><span>03. THÔNG TIN</span></div>
+          <div class="hero-metric"><strong>02</strong><span>LUỒNG TRA CỨU</span></div>
+          <div class="hero-mini"><span class="mini-line"></span><span class="mini-line short"></span><span class="mini-line"></span></div>
+          <div class="hero-footer">Xác minh xuất cảnh trên hệ thống chính thức, không suy đoán từ trạng thái MST.</div>
+        </div>
+      </div>
+    </section>
+    <section id="tra-cuu" class="container workspace">
+      <div class="section-heading"><div><span class="section-kicker">TRA CỨU TRỰC TUYẾN</span><h2>Trung tâm tra cứu</h2></div><span class="section-note">Phiên bản 1.0 · Dành cho cá nhân và doanh nghiệp</span></div>
+      <div class="tabs" role="tablist" aria-label="Chọn loại tra cứu">
+        <button id="tab-company" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-company">01 <span>Thông tin doanh nghiệp</span></button>
+        <button id="tab-exit" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-exit">02 <span>Thông báo xuất cảnh</span></button>
+      </div>
+      <div class="lookup-grid">
+        <div class="main-card">
+          <section id="panel-company" role="tabpanel" aria-labelledby="tab-company">
+            <div class="card-head"><div class="card-symbol">⌕</div><div><h3>Nhận dạng người nộp thuế</h3><p>Kiểm tra tình trạng doanh nghiệp, tổ chức, chi nhánh và hộ kinh doanh theo MST.</p></div></div>
+            <form id="company-form" novalidate>
+              <label for="tax-code">Mã số thuế doanh nghiệp / đơn vị <span class="required">*</span></label>
+              <div class="input-action"><input id="tax-code" name="taxCode" placeholder="Ví dụ: 0101248141 hoặc 0101248141-001" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="14" required><button class="primary-btn" id="lookup-btn" type="submit">Tra cứu MST <span aria-hidden="true">→</span></button></div>
+              <p class="field-hint">MST gồm 10 chữ số hoặc MST đơn vị phụ thuộc gồm 13 chữ số (có thể dùng dấu gạch nối).</p>
+              <div class="form-foot"><button class="link-button" type="button" id="demo-btn">Xem dữ liệu mẫu ↗</button><span id="api-mode" class="mode-pill">API chưa cấu hình</span></div>
+            </form>
+            <div id="company-message" class="message hidden" role="status" aria-live="polite"></div>
+            <div id="company-result" class="result hidden" aria-live="polite">
+              <div class="result-head"><div><span class="overline">HỒ SƠ NGƯỜI NỘP THUẾ</span><h4 id="result-name"></h4></div><span id="result-tag" class="status-tag"></span></div>
+              <div class="result-grid">
+                <div><span>Mã số thuế</span><strong id="result-tax-id"></strong></div>
+                <div><span>Loại hình</span><strong id="result-type"></strong></div>
+                <div class="wide"><span>Địa chỉ đăng ký</span><strong id="result-address"></strong></div>
+                <div><span>Cơ quan thuế quản lý</span><strong id="result-department"></strong></div>
+                <div><span>Cập nhật dữ liệu</span><strong id="result-updated"></strong></div>
+              </div>
+              <p class="disclaimer" id="result-source"></p>
+              <div class="next-card"><div><strong>Tiếp tục kiểm tra thông báo xuất cảnh?</strong><p>Trạng thái MST không xác nhận tình trạng tạm hoãn xuất cảnh của cá nhân.</p></div><button id="go-exit" type="button" class="outline-btn">Kiểm tra thông báo →</button></div>
+            </div>
+          </section>
+          <section id="panel-exit" class="hidden" role="tabpanel" aria-labelledby="tab-exit">
+            <div class="card-head"><div class="card-symbol teal">◇</div><div><h3>Thông báo tạm hoãn xuất cảnh</h3><p>Hỗ trợ tra cứu bằng CCCD/CMND hoặc MST trên cổng thông tin chính thức.</p></div></div>
+            <form id="exit-form" novalidate>
+              <label for="identifier">CCCD / CMND / mã số thuế <span class="required">*</span></label>
+              <div class="input-action"><input id="identifier" placeholder="Nhập CCCD 12 số hoặc MST" inputmode="numeric" autocomplete="off" spellcheck="false" maxlength="14" required><button type="submit" class="primary-btn">Chuẩn bị tra cứu →</button></div>
+              <p class="field-hint">Mã chỉ dùng để chuẩn bị thao tác. Bạn sẽ tự nhập mã xác nhận trên website của Cục Thuế.</p>
+            </form>
+            <div id="exit-message" class="message hidden" role="status" aria-live="polite"></div>
+            <div id="exit-result" class="result hidden">
+              <div class="result-head"><div><span class="overline">TRA CỨU CHÍNH THỨC</span><h4>Chọn loại thông báo cần kiểm tra</h4></div><span class="status-tag pending">Chưa xác minh</span></div>
+              <div class="notice-box"><span>Số đã nhập</span><div class="identifier-line"><strong id="masked-identifier"></strong><button id="copy-identifier" type="button" class="link-button">Sao chép để nhập tại Cục Thuế</button></div></div>
+              <div class="notice-options">
+                <a href="https://gdt.gov.vn/wps/portal/Home/nt/xc" target="_blank" rel="noopener noreferrer" class="notice-link"><span class="notice-icon">01</span><span><strong>Đã có thông báo về xuất cảnh</strong><small>Thông báo tạm hoãn, gia hạn, hủy bỏ</small></span><span aria-hidden="true">↗</span></a>
+                <a href="https://gdt.gov.vn/wps/portal/Home/nt/se" target="_blank" rel="noopener noreferrer" class="notice-link"><span class="notice-icon">02</span><span><strong>Sẽ tạm hoãn xuất cảnh</strong><small>Thông báo dự kiến áp dụng</small></span><span aria-hidden="true">↗</span></a>
+              </div>
+              <p class="disclaimer"><strong>Quan trọng:</strong> TaxMap chưa truy vấn được trạng thái xuất cảnh tự động. Không tìm thấy thông báo trên một nguồn không chứng minh bạn chắc chắn được phép xuất cảnh. Hãy kiểm tra cả hai nguồn và liên hệ cơ quan có thẩm quyền khi cần.</p>
+            </div>
+          </section>
+        </div>
+        <aside class="side-card">
+          <div class="side-title"><span class="side-orb">i</span><h3>Cần biết trước khi tra cứu</h3></div>
+          <div class="fact"><span class="fact-no">01</span><div><strong>MST khác CCCD</strong><p>Xinvoice tra cứu người nộp thuế bằng MST; không xác định quan hệ giữa CCCD và doanh nghiệp.</p></div></div>
+          <div class="fact"><span class="fact-no">02</span><div><strong>Trạng thái MST ≠ xuất cảnh</strong><p>Một doanh nghiệp đang hoạt động không đồng nghĩa người đại diện được phép xuất cảnh.</p></div></div>
+          <div class="fact"><span class="fact-no">03</span><div><strong>Thông báo cần xác minh</strong><p>Cổng Cục Thuế yêu cầu mã xác nhận. TaxMap không vượt CAPTCHA và không tự truy cập dữ liệu cá nhân.</p></div></div>
+          <div class="side-info"><strong>Quyền riêng tư</strong><p>Trình duyệt không lưu CCCD vào bộ nhớ lâu dài. Không gửi CCCD tới Xinvoice. Chỉ gửi MST khi bạn chủ động tra cứu thông tin doanh nghiệp.</p></div>
+        </aside>
+      </div>
+    </section>
+    <section id="nguon-chinh-thuc" class="container sources">
+      <div class="section-heading"><div><span class="section-kicker">LIÊN KẾT XÁC THỰC</span><h2>Nguồn dữ liệu chính thức</h2></div></div>
+      <div class="source-grid">
+        <a href="https://tracuunnt.gdt.gov.vn/tcnnt/mstdn.jsp" target="_blank" rel="noopener noreferrer" class="source-card"><span class="source-icon">01</span><strong>Cục Thuế · Tra cứu MST</strong><p>Xác minh đăng ký và trạng thái người nộp thuế.</p><span>Truy cập ↗</span></a>
+        <a href="https://gdt.gov.vn/wps/portal/Home/nt/xc" target="_blank" rel="noopener noreferrer" class="source-card"><span class="source-icon">02</span><strong>Cục Thuế · Thông báo xuất cảnh</strong><p>Thông báo tạm hoãn, gia hạn, hủy bỏ.</p><span>Truy cập ↗</span></a>
+        <a href="https://gdt.gov.vn/wps/portal/Home/nt/se" target="_blank" rel="noopener noreferrer" class="source-card"><span class="source-icon">03</span><strong>Cục Thuế · Sẽ tạm hoãn</strong><p>Thông báo trước khi áp dụng biện pháp.</p><span>Truy cập ↗</span></a>
+        <a href="https://xinvoice.vn/docs/api-tich-hop/api-tra-mst/" target="_blank" rel="noopener noreferrer" class="source-card"><span class="source-icon">04</span><strong>Xinvoice · Tài liệu API</strong><p>REST API tra cứu MST dành cho tích hợp.</p><span>Tài liệu ↗</span></a>
+      </div>
+    </section>
+    <section id="huong-dan" class="container howto">
+      <div class="guide-left"><span class="section-kicker">CÁCH SỬ DỤNG</span><h2>Hai luồng thông tin.<br>Một điểm truy cập.</h2><p>TaxMap giúp tiết kiệm thao tác và phân biệt nguồn dữ liệu. Không thay thế kết quả xác minh chính thức của cơ quan quản lý thuế hoặc xuất nhập cảnh.</p></div>
+      <div class="guide-steps"><div><b>1</b><p><strong>Nhập MST</strong><span>Nhận dạng doanh nghiệp qua Xinvoice khi API đã kết nối.</span></p></div><div><b>2</b><p><strong>Chuyển sang tab thông báo</strong><span>Nhập CCCD, CMND hoặc MST của người cần tự kiểm tra.</span></p></div><div><b>3</b><p><strong>Hoàn tất tại Cục Thuế</strong><span>Chọn cả hai danh sách, nhập mã xác nhận và đọc văn bản liên quan.</span></p></div></div>
+    </section>
+  </main>
+  <footer class="footer"><div class="container footer-inner"><div><strong>taxmap<span>+</span></strong><p>Công cụ cộng đồng · Không phải cổng thông tin nhà nước</p></div><div><a href="https://github.com/xulytiengviet/taxmap" target="_blank" rel="noopener noreferrer">Mã nguồn mở</a><span>© 2026 TaxMap Vietnam</span></div></div></footer>
+  <script src="./assets/config.js"></script>
+  <script src="./assets/app.js"></script>
+</body>
+</html>
