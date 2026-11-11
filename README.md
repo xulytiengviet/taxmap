@@ -37,7 +37,7 @@ python -m http.server 8080
 
 Mở `http://localhost:8080`. Chọn **Xem dữ liệu mẫu** để kiểm tra giao diện. Đó là dữ liệu ví dụ từ tài liệu Xinvoice, **không phải kết quả thực tế**.
 
-Để xuất bản trang: GitHub → **Settings → Pages → Deploy from a branch** → `main` / `/(root)` → Save. Đường dẫn dự kiến sau khi Pages được bật là `https://xulytiengviet.github.io/taxmap/`; không mặc định coi URL này đã được triển khai.
+Để xuất bản: GitHub → **Settings → Pages → Build and deployment → Source: GitHub Actions** (bật thủ công một lần). Sau đó mở **Actions → Deploy TaxMap Pages → Run workflow**, hoặc đẩy commit mới vào `main`. Workflow `.github/workflows/pages.yml` sẽ tự xuất bản. Đường dẫn dự kiến sau khi triển khai thành công là `https://xulytiengviet.github.io/taxmap/`. Repository mới chưa bật Pages sẽ khiến workflow lỗi ở bước `Configure Pages` cho đến khi cấu hình này hoàn tất.
 
 ## 2. Đăng ký API Xinvoice
 
