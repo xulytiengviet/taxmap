@@ -54,7 +54,11 @@
       taxID: String(d.taxID), name: String(d.name),
       orgType: d.orgType ?? null, address: d.address ?? null,
       taxDepartment: d.taxDepartment ?? null, status: d.status ?? null,
-      updatedAt: d.updatedAt ?? null
+      updatedAt: d.updatedAt ?? null, taxAddress: d.taxAddress ?? null,
+      internationalName: d.internationalName ?? null, shortName: d.shortName ?? null,
+      legalRepresentative: d.legalRepresentative ?? null,
+      mainIndustry: d.mainIndustry ?? null, mainIndustryCode: d.mainIndustryCode ?? null,
+      mainIndustryDescription: d.mainIndustryDescription ?? null
     };
   }
 
@@ -67,7 +71,11 @@
     return {
       taxID: String(d.id), name: String(d.name),
       orgType: null, address: d.address ?? null,
-      taxDepartment: null, status: null, updatedAt: null
+      internationalName: d.internationalName ?? null,
+      shortName: d.shortName ?? null,
+      taxDepartment: null, status: null, updatedAt: null,
+      taxAddress: null, legalRepresentative: null,
+      mainIndustry: null, mainIndustryCode: null, mainIndustryDescription: null
     };
   }
 
@@ -77,6 +85,46 @@
     return String(error && error.message || 'không rõ lý do').slice(0, 180);
   }
 
+  function getReference(taxCode) {
+    const records = root.TAXMAP_CURATED;
+    return records && Object.prototype.hasOwnProperty.call(records, taxCode.replace(/-/g, ''))
+      ? records[taxCode.replace(/-/g, '')] : null;
+  }
+
+  function attachReference(result, reference, isLive = true) {
+    if (!reference) return {...result, isLive, reference: null};
+    const data = {...result.data};
+    const enrichedFields = [];
+    // Không dùng trạng thái cũ để giả làm status trả về từ API mới.
+    for (const [key, value] of Object.entries(reference.data)) {
+      if (key === 'taxID' || key === 'name' || key === 'status' || key === 'updatedAt') continue;
+      if (data[key] === null || data[key] === undefined || data[key] === '') {
+        data[key] = value;
+        enrichedFields.push(key);
+      }
+    }
+    const details = {
+      asOf: reference.asOf,
+      name: reference.sourceName,
+      url: reference.sourceUrl,
+      alternateUrl: reference.alternateSourceUrl,
+      enrichedFields
+    };
+    const note = isLive
+      ? ' Các trường bổ sung từ hồ sơ tham khảo ngày ' + reference.asOf +
+        ' không phải dữ liệu thời gian thực.'
+      : ' Không truy cập được API. Chỉ hiển thị hồ sơ tham khảo ngày ' +
+        reference.asOf + ', không phải xác nhận trạng thái hiện tại.';
+    return {...result, data, reference: details, isLive, warning: (result.warning || '') + note};
+  }
+
+  function assertMatchedTaxID(data, taxCode) {
+    const returned = normalizeTaxCode(String(data.taxID || ''));
+    if (!returned || returned !== taxCode) {
+      throw new Error('MST trong phản hồi API không trùng mã được yêu cầu.');
+    }
+  }
+
   async function lookup(rawTaxCode, options = {}) {
     const taxCode = normalizeTaxCode(rawTaxCode);
     if (!taxCode) throw new Error('Mã số thuế phải gồm 10 hoặc 13 chữ số.');
@@ -84,13 +132,16 @@
     if (typeof fetcher !== 'function') throw new Error('Trình duyệt không hỗ trợ Fetch API.');
     const timeoutMs = Number.isFinite(options.timeoutMs)
       ? Math.max(200, Math.min(options.timeoutMs, 15000)) : 6500;
+    const reference = getReference(taxCode);
     let xinvoiceIssue = '';
     try {
       const payload = await requestJSON(XINVOICE + encodeURIComponent(taxCode), fetcher, timeoutMs);
-      return {
-        source: 'Xinvoice', taxCode, data: fromXinvoice(payload),
+      const data = fromXinvoice(payload);
+      assertMatchedTaxID(data, taxCode);
+      return attachReference({
+        source: 'Xinvoice', taxCode, data,
         retrievedAt: new Date().toISOString(), warning: ''
-      };
+      }, reference);
     } catch (error) {
       xinvoiceIssue = describeError(error);
     }
@@ -98,15 +149,27 @@
     try {
       const codeWithoutDash = taxCode.replace('-', '');
       const payload = await requestJSON(VIETQR + encodeURIComponent(codeWithoutDash), fetcher, timeoutMs);
-      return {
-        source: 'VietQR', taxCode, data: fromVietQR(payload),
+      const data = fromVietQR(payload);
+      assertMatchedTaxID(data, taxCode);
+      return attachReference({
+        source: 'VietQR', taxCode, data,
         retrievedAt: new Date().toISOString(), warning:
           'Xinvoice trực tiếp không trả dữ liệu (' + xinvoiceIssue + '). ' +
           'Đã sử dụng VietQR không cần khóa để nhận dạng doanh nghiệp. ' +
           'VietQR không cung cấp tình trạng hoạt động hoặc thông báo xuất cảnh. ' +
           'Dịch vụ VietQR dự kiến ngừng hỗ trợ từ 01/03/2027.'
-      };
+      }, reference);
     } catch (error) {
+      if (reference) {
+        const {snapshotStatus, ...referenceFields} = reference.data;
+        return attachReference({
+          source: 'Hồ sơ tham khảo',
+          taxCode,
+          data: {...referenceFields, status: null, snapshotStatus},
+          retrievedAt: null,
+          warning: 'Xinvoice: ' + xinvoiceIssue + '; VietQR: ' + describeError(error) + '.'
+        }, reference, false);
+      }
       throw new Error(
         'Không thể tra cứu trực tiếp. Xinvoice: ' + xinvoiceIssue +
         '; VietQR: ' + describeError(error) +
