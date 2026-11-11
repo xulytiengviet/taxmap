@@ -3,8 +3,7 @@
   const $ = (id) => document.getElementById(id);
   const panels = {company: $('panel-company'), exit: $('panel-exit')};
   const tabs = {company: $('tab-company'), exit: $('tab-exit')};
-  const config = window.TAXMAP_CONFIG || {};
-  const apiBase = typeof config.apiBase === 'string' ? config.apiBase.replace(/\/+$/, '').trim() : '';
+  const lookupClient = window.TAXMAP_LOOKUP;
   const sourceLinks = {
     issued: 'https://gdt.gov.vn/wps/portal/Home/nt/xc',
     planned: 'https://gdt.gov.vn/wps/portal/Home/nt/se'
@@ -22,10 +21,8 @@
   tabs.company.addEventListener('click', () => setTab('company'));
   tabs.exit.addEventListener('click', () => setTab('exit'));
   document.querySelectorAll('.notice-link').forEach((el, index) => { el.href = index === 0 ? sourceLinks.issued : sourceLinks.planned; });
-  if (apiBase && /^https:\/\//i.test(apiBase)) {
-    $('api-mode').textContent = 'Đã cấu hình kết nối API';
-    $('api-mode').classList.add('online');
-  }
+  $('api-mode').textContent = 'Thử Xinvoice → dự phòng VietQR';
+  $('api-mode').classList.add('online');
   function showMessage(id, message, kind) {
     const el = $(id);
     el.textContent = message;
@@ -79,10 +76,11 @@
     const label = str(data.status);
     const tag = $('result-tag');
     tag.textContent = label;
-    tag.className = 'status-tag ' + classifyStatus(data.status);
+    tag.className = 'status-tag ' + (data.status ? classifyStatus(data.status) : 'pending');
+    const source = (payload && payload.source) || 'Xinvoice';
     $('result-source').textContent = sample
       ? 'DỮ LIỆU MẪU từ tài liệu Xinvoice — KHÔNG PHẢI kết quả tra cứu thời gian thực. Không dùng để kết luận tình trạng doanh nghiệp hoặc xuất cảnh.'
-      : 'Nguồn: Xinvoice API · Thời điểm truy vấn: ' + new Date().toLocaleString('vi-VN') + '. Trạng thái MST không phản ánh tình trạng tạm hoãn xuất cảnh.';
+      : 'Nguồn: ' + source + ' · Thời điểm truy vấn: ' + new Date().toLocaleString('vi-VN') + '. Trạng thái MST không phản ánh tình trạng tạm hoãn xuất cảnh. ' + (source === 'VietQR' ? 'VietQR không cung cấp trạng thái hoạt động; các ô không có dữ liệu phải được xác minh tại Cục Thuế.' : '');
     $('company-result').classList.remove('hidden');
   }
   const sample = {
@@ -107,28 +105,17 @@
       showMessage('company-message', 'MST không hợp lệ. Hãy nhập 10 số hoặc 10 số + 3 số chi nhánh. CCCD 12 số không phải đầu vào của chức năng doanh nghiệp.', 'error');
       return;
     }
-    if (!apiBase || !/^https:\/\//i.test(apiBase)) {
-      showMessage('company-message','Website hiện chưa kết nối backend Xinvoice. Quản trị viên cần triển khai Cloudflare Worker và điền apiBase trong assets/config.js. Bạn vẫn có thể xem dữ liệu mẫu hoặc tra cứu tại Cục Thuế.','info');
-      return;
-    }
     const button = $('lookup-btn');
     button.disabled = true;
     button.textContent = 'Đang tra cứu…';
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 12000);
     try {
-      const response = await fetch(apiBase + '/api/lookup', {
-        method: 'POST', mode: 'cors', cache:'no-store',
-        headers: {'Content-Type':'application/json'},
-        body: JSON.stringify({taxCode:code}), signal: controller.signal
-      });
-      const raw = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(raw.error || ('Không thể tra cứu (HTTP '+response.status+').'));
-      renderTaxData(raw, false);
+      if (!lookupClient) throw new Error('Chưa tải được mô-đun tra cứu. Hãy tải lại trang.');
+      const result = await lookupClient.lookup(code);
+      renderTaxData(result, false);
+      if (result.warning) showMessage('company-message', result.warning, 'info');
     } catch (error) {
-      showMessage('company-message', error.name === 'AbortError' ? 'Hết thời gian chờ. Vui lòng thử lại.' : (error instanceof TypeError ? 'Không thể kết nối API. Kiểm tra Worker, CORS và mạng.' : error.message), 'error');
+      showMessage('company-message', error && error.message ? error.message : 'Không thể kết nối dịch vụ tra cứu.', 'error');
     } finally {
-      clearTimeout(timeout);
       button.disabled = false;
       button.textContent = 'Tra cứu MST →';
     }
